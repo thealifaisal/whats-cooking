@@ -15,7 +15,7 @@ if __name__ == "__main__":
     print(datetime.now().strftime("%H:%M:%S") + ": setting paths...")
     # input paths
     data_folder_path = "../resource/train.json/"
-    stop_file_path = "../out/stop-words.txt"
+    stop_file_path = "../resource/stop-words.txt"
 
     # output paths
     train_file_path = "../out/train-set.json"

@@ -175,10 +175,16 @@ class MachineLearning:
         predicted_class = list(result_set.keys())[0]
         actual_class = test_composite_key.split("-")[1]
 
+        file = open("../out/prediction-rochhio.txt", "a+")
+
         if predicted_class == actual_class:
+            file.write("test_file: " + test_composite_key + " \t\tpredicted class: " + predicted_class + "\n")
             correct = 1
         else:
+            file.write("test_file: " + test_composite_key + " \t\tpredicted class: " + predicted_class + "\n")
             correct = 0
+
+        file.close()
 
         return correct
 
@@ -239,16 +245,16 @@ class MachineLearning:
 
         actual_class = test_composite_key.split("-")[1]
 
-        # file = open("../out/prediction.txt", "a+")
+        file = open("../out/prediction-knn.txt", "a+")
 
         if predicted_class == actual_class:
-            # file.write("test_file: " + test_composite_key + " \t\tpredicted class: " + labels[predicted_class] + "\n")
+            file.write("test_file: " + test_composite_key + " \t\tpredicted class: " + predicted_class + "\n")
             correct = 1
         else:
-            # file.write("test_file: " + test_composite_key + " \t\tpredicted class: " + labels[predicted_class] + "\n")
+            file.write("test_file: " + test_composite_key + " \t\tpredicted class: " + predicted_class + "\n")
             correct = 0
 
-        # file.close()
+        file.close()
 
         return correct
 
@@ -319,6 +325,7 @@ class MachineLearning:
         accuracy = format((correct_predictions / testset_len) * 100, ".5f")
 
         print(datetime.now().strftime("%H:%M:%S") + ": KNN accuracy = " + accuracy)
+        print(datetime.now().strftime("%H:%M:%S") + ": Output generated in ../out/prediction-knn.txt")
 
     def testRochhio(self, testset_len, test_set, centroids, test_vectors):
         # number of correct predictions
@@ -341,3 +348,4 @@ class MachineLearning:
         accuracy = format((correct_predictions / testset_len) * 100, ".5f")
 
         print(datetime.now().strftime("%H:%M:%S") + ": Rochhio accuracy = " + accuracy)
+        print(datetime.now().strftime("%H:%M:%S") + ": Output generated in ../out/prediction-rochhio.txt")
