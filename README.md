@@ -6,4 +6,12 @@ If you're in Northern California, you'll be walking past the inevitable bushels 
 
 Some of our strongest geographic and cultural associations are tied to a region's local foods. This playground competitions asks you to predict the category of a dish's cuisine given a list of its ingredients. 
 
+## Data
 
+The training JSON file is an array of objects, each with the list of ingredients and the cuisine. The
+testing file contains objects in the same format with the cuisine removed.
+"id": 24717,
+"cuisine": "indian",
+"ingredients": ["tumeric", "vegetable stock", "tomatoes", "garam
+masala", "naan", "red lentils", "red chili peppers", "onions",
+"spinach", "sweet potatoes"]
