@@ -6,6 +6,7 @@
 # ******************************************
 
 from nltk.stem import PorterStemmer, WordNetLemmatizer
+import unicodedata
 
 
 # I created a class Preprocessing to encapsulate the token and stemming-wrapper methods
@@ -76,7 +77,22 @@ class Preprocessing:
         # remove these before performing indexing
         return tokens_L  # returns a prepared list of tokens
 
-    def stemmer(self, tokens_list):
+    # removes the accents from the string
+    @staticmethod
+    def strip_accents(text):
+        try:
+            text = unicode(text, 'utf-8')
+        except NameError:  # unicode is a default on python 3
+            pass
+
+        text = unicodedata.normalize('NFD', text) \
+            .encode('ascii', 'ignore') \
+            .decode("utf-8")
+
+        return str(text)
+
+    @staticmethod
+    def stemmer(tokens_list):
         stems_list = []
         ps = PorterStemmer()  # imported from nltk library
         for tk in tokens_list:  # pass token from token list in stem function and add stems in list
@@ -84,7 +100,9 @@ class Preprocessing:
             stems_list.append(stem)
         return stems_list  # returns a list of stems
 
-    def lemmatizer(self, tokens_list):
+    @staticmethod
+    def lemmatizer(tokens_list):
+        # tokens_list has all the tokens from a single document string
         lemma_set = {}
         wnl = WordNetLemmatizer()  # imported from nltk library
         for tk in tokens_list:  # for each token in token list
@@ -97,4 +115,5 @@ class Preprocessing:
                 count = lemma_set.get(lemma)    # fetch tf of lemma
                 count += 1      # inc tf
                 lemma_set[lemma] = count    # update tf
-        return lemma_set  # returns a set of lemmas
+        # lemma_set = {lemma-1: tf, , ...}
+        return lemma_set  # returns a dict of lemmas

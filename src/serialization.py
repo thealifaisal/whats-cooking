@@ -106,8 +106,8 @@ class Serialization:
         # iterates for every file in train-set
         for obj in data:
 
-            label = obj["label"]
-            features_dict = obj["features"]
+            label = obj["cuisine"]
+            features_dict = obj["ingredients"]
 
             # checks if label/class is in the dict
             if label not in class_terms.keys():
@@ -156,3 +156,44 @@ class Serialization:
 
         # returning a list
         return stoplist
+
+    # cleans all strings of Ingredient in all the JSON objects
+    def cleanIngredients(self, json_list):
+        # iterating over each JSON object in json_list
+        for obj in json_list:
+            # e.g: cleaned_ing_dict = {ing-1: tf, ing-2: tf, ...}
+            cleaned_ing_dict = {}
+            # iterating for each ingredient in the list: obj["ingredients"]
+            for ing in obj["ingredients"]:
+                # returns a clean ingredient
+                cleaned_ing = self.cleanSingleIngredient(ing)
+                # if cleaned_ing is not in dict
+                if cleaned_ing not in cleaned_ing_dict.keys():
+                    cleaned_ing_dict[cleaned_ing] = 1  # initially tf is 1
+                else:
+                    count = cleaned_ing_dict.get(cleaned_ing)  # fetch tf of lemma
+                    count += 1  # inc tf
+                    cleaned_ing_dict[cleaned_ing] = count  # update tf
+            # assigning the ingredients dict with tf at index: obj["ingredients"]
+            obj["ingredients"] = cleaned_ing_dict
+
+        # returns a json_list after cleaning ingredients from each JSON object
+        # e.g: json_list = [{id: id1, cuisine: cs1, ingredients: {ing-1, tf, ing-2: tf, ...}}, ...]
+        return json_list
+
+    # cleans a single string of Ingredient
+    def cleanSingleIngredient(self, ingredient):
+        # e.g: ingredient = "black olives"
+        # removes accent from the string
+        ingredient = self.preprocessing.strip_accents(ingredient)
+        # tokenize the string and returns a list
+        # e.g: token_list = ['black', 'olives']
+        token_list = self.preprocessing.tokenizer(ingredient+" ")
+        # returns a dictionary with lemmas as keys and tf's as their values
+        # e.g: lemma_set = {black: 1, olive: 1, ...}
+        lemma_set = self.preprocessing.lemmatizer(token_list)
+        # joins all the keys in the dict with spaces to form a string
+        cleaned_ingredient = " ".join(lemma_set.keys())
+        # returns a cleaned ingredient
+        # e.g: black olive
+        return cleaned_ingredient

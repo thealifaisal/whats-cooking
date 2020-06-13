@@ -8,6 +8,10 @@
 import math
 import operator
 import numpy as np
+from datetime import datetime
+
+# ignores divide by zero warning because it is already handled
+np.seterr(divide='ignore', invalid='ignore')
 
 
 class MachineLearning:
@@ -15,7 +19,7 @@ class MachineLearning:
     @staticmethod
     def createTrainVectors(vocabulary, train_set):
 
-        # train_vectors = {"id-1": [tf-1, tf-2, tf-3, ...], "id-2": [tf-1, tf-2, ...], ...}
+        # e.g: train_vectors = {"id-1": [tf-1, tf-2, tf-3, ...], "id-2": [tf-1, tf-2, ...], ...}
         train_vectors = {}
         trainset_len = len(train_set)
         vocabulary_len = len(vocabulary)
@@ -30,15 +34,16 @@ class MachineLearning:
             for doc in range(0, trainset_len):
 
                 doc_id = train_set[doc]["id"]
-                label = train_set[doc]["label"]
-                key = doc_id + "_" + label
+                label = train_set[doc]["cuisine"]
+                # creating a composite key
+                key = str(doc_id) + "-" + label
 
                 try:
                     if key not in train_vectors.keys():
                         train_vectors[key] = [0] * vocabulary_len
 
                     # assigns tf of term in doc
-                    train_vectors[key][i] = train_set[doc]["features"][voc]
+                    train_vectors[key][i] = train_set[doc]["ingredients"][voc]
                     df += 1
 
                 except KeyError:
@@ -48,10 +53,9 @@ class MachineLearning:
             idf_vector[i] = (float(format(math.log10(trainset_len / df), ".5f")))
 
             for doc in range(0, trainset_len):
-
                 doc_id = train_set[doc]["id"]
-                label = train_set[doc]["label"]
-                key = doc_id + "_" + label
+                label = train_set[doc]["cuisine"]
+                key = str(doc_id) + "-" + label
 
                 tf = float(format(train_vectors[key][i], ".5f"))
                 train_vectors[key][i] = float(format(idf_vector[i] * tf, ".5f"))
@@ -73,15 +77,15 @@ class MachineLearning:
             for doc in range(0, test_set_len):
 
                 doc_id = test_set[doc]["id"]
-                label = test_set[doc]["label"]
-                key = doc_id + "_" + label
+                label = test_set[doc]["cuisine"]
+                key = str(doc_id) + "-" + label
 
                 try:
                     if key not in test_vectors.keys():
                         test_vectors[key] = [0] * vocabulary_len
 
                     # assigns tf-idf of term in test-doc
-                    tf = test_set[doc]["features"][voc]
+                    tf = test_set[doc]["ingredients"][voc]
                     test_vectors[key][i] = float(format(idf_vector[i] * tf, ".5f"))
 
                 except KeyError:
@@ -97,7 +101,7 @@ class MachineLearning:
         wb_sheet.cell(1, 1).value = "bag"
         for _i in range(2, trainset_len + 1):
             # e.g: doc-id = 037a, 110t, ...
-            wb_sheet.cell(1, _i).value = train_set[_i - 2]["id"] + train_set[_i - 2]["label"][0]
+            wb_sheet.cell(1, _i).value = train_set[_i - 2]["id"] + train_set[_i - 2]["cuisine"][0]
         wb_sheet.cell(1, trainset_len + 2).value = "idf"
         return
 
@@ -105,7 +109,7 @@ class MachineLearning:
     # returns trains and test sets
     @staticmethod
     def dataSplit(jsonlist):
-        # jsonlist = [{id: id1, label: lb1, features: {term: tf}}, {}, {}, ...]
+        # jsonlist = [{id: id1, cuisine: lb1, ingredients: {term: tf}}, {}, {}, ...]
 
         docs_len = len(jsonlist)  # 737
         train_len = round(70 / 100 * docs_len)  # 516
@@ -127,13 +131,13 @@ class MachineLearning:
     def createVocabulary(trainset):
         vocab = []
         for file in trainset:
-            for feature in file["features"].keys():
+            for feature in file["ingredients"].keys():
                 if feature not in vocab:
                     vocab.append(feature)
         return vocab
 
     @staticmethod
-    def cosineSimilarity(train_vectors, test_vectors, test_key, vocabulary_len):
+    def cosineSimilarity(train_vectors, test_vectors, test_key):
         result_set = {}
         # test_vector => list
         test_vector = test_vectors[test_key]
@@ -167,27 +171,37 @@ class MachineLearning:
         return result_set
 
     @staticmethod
+    def classifyRochhio(result_set, test_composite_key):
+        predicted_class = list(result_set.keys())[0]
+        actual_class = test_composite_key.split("-")[1]
+
+        if predicted_class == actual_class:
+            correct = 1
+        else:
+            correct = 0
+
+        return correct
+
+    @staticmethod
     def classifyKNN(result_set, k, test_composite_key):
         # KNN:
         #   key: doc-class
         #   value: number of docs that belong to that class from top K result_set
-        # e.g: KNN = {"athletics": 2, "tennis": 1}
-        # e.g: KNN = {"athletics": 1`, "tennis": 1, "rugby": 1}
+        # e.g: KNN = {"filipino": 2, "southern_us": 1}
+        # e.g: KNN = {"filipino": 1`, "italian": 1, "southern_us": 1}
         KNN = {}
-        labels = {"athletics": "athletics", "cricket": "cricket", "football": "football",
-                  "rugby": "rugby", "tennis": "tennis"}
 
-        # i=0, 1, 2, .. | item=("067_cricket", 0.12458), ...
-        # {'063_rugby': 0.13047, '141_football': 0.12382, '012_rugby': 0.10805
+        # e.g: KNN = {'063_italian': 0.13047, '141_filipino': 0.12382, '012_italian': 0.10805}
+        # i=0, 1, 2, .. | item=("067_filipino", 0.12458), ...
         for i, item in enumerate(result_set.items()):
 
             if i >= k:
                 # after selecting top k, break
                 break
 
-            # item = ("003_athletics", 0.12312)
-            # item[0]="003_athletics", item[1]=0.12312
-            lab = item[0].split("_")[1]
+            # item = ("003_filipino", 0.12312)
+            # item[0]="003_filipino", item[1]=0.12312
+            lab = item[0].split("-")[1]
 
             # if a class of doc from top K result is not in KNN
             if lab not in KNN.keys():
@@ -199,41 +213,131 @@ class MachineLearning:
 
         # sort KNN in descending order,
         # so that class with most docs in top K results is at starting index
-        # e.g: KNN = {"athletics": 2, "tennis": 1} -> 2 docs are from class 'athletics', 1 doc is from class 'tennis'
+        # e.g: KNN = {"filipino": 2, "tennis": 1} -> 2 docs are from class 'filipino', 1 doc is from class 'italian'
         KNN = dict(sorted(KNN.items(), key=operator.itemgetter(1), reverse=True))
 
         # fetch item with max doc occurrences from the start
-        # e.g: max_item = ("athletics": 2)
+        # e.g: max_item = ("filipino": 2)
         max_item = list(KNN.items())[0]
 
         # check if all values are same in KNN
         #   means that in top K results, each class occurred has same number of docs occurrences
-        # e.g: KNN = {"athletics": 1`, "tennis": 1, "rugby": 1}
+        # e.g: KNN = {"filipino": 1`, "italian": 1, "rugby": 1}
         # all_values_same = {True, False}
         all_values_same = all(x == max_item[1] for x in KNN.values())
 
         if all_values_same:
             # then select the doc from result_set with max cosine value
-            # e.g: doc_key = "003_athletics"
+            # e.g: doc_key = "003_filipino"
             doc_key = list(result_set.keys())[0]
-            predicted_class = doc_key.split("_")[1]
+            predicted_class = doc_key.split("-")[1]
         else:
             # otherwise select the class with most documents in KNN
-            # e.g: max_item = ("athletics": 2)
-            # max_item[0] = "athletics"
+            # e.g: max_item = ("filipino": 2)
+            # max_item[0] = "filipino"
             predicted_class = max_item[0]
 
-        actual_class = test_composite_key.split("_")[1]
+        actual_class = test_composite_key.split("-")[1]
 
-        file = open("../out/prediction.txt", "a+")
+        # file = open("../out/prediction.txt", "a+")
 
         if predicted_class == actual_class:
-            file.write("test_file: " + test_composite_key + " \t\tpredicted class: " + labels[predicted_class] + "\n")
+            # file.write("test_file: " + test_composite_key + " \t\tpredicted class: " + labels[predicted_class] + "\n")
             correct = 1
         else:
-            file.write("test_file: " + test_composite_key + " \t\tpredicted class: " + labels[predicted_class] + "\n")
+            # file.write("test_file: " + test_composite_key + " \t\tpredicted class: " + labels[predicted_class] + "\n")
             correct = 0
 
-        file.close()
+        # file.close()
 
         return correct
+
+    # if data-set is too large for the machine, then selects top N objects from JSON data
+    @staticmethod
+    def selectTopNObjects(json_data, n):
+        json_list = []
+        for i, obj in enumerate(json_data):
+            if i == n:
+                break
+            else:
+                json_list.append(obj)
+
+        return json_list
+
+    @staticmethod
+    def findLabels(json_data):
+        labels = {}
+        for obj in json_data:
+            cuisine = obj["cuisine"]
+            if cuisine not in labels.keys():
+                labels[cuisine] = 1
+            else:
+                labels[cuisine] += 1
+        # e.g: labels = {filipino: 200, southern_us: 3000, ...}
+        return labels
+
+    @staticmethod
+    def createCentroids(train_vectors, vocabulary_len, labels):
+        centroids = {}
+        # e.g: doc_id = 11300-filipino
+        for doc_id in train_vectors.keys():
+            cuisine = doc_id.split("-")[1]
+            train_vec = np.array(train_vectors.get(doc_id))
+            if cuisine not in centroids.keys():
+                centroids[cuisine] = [0] * vocabulary_len
+            centr_vec = np.array(centroids[cuisine])
+            sum_cent = np.add(train_vec, centr_vec)
+            centroids[cuisine] = sum_cent
+
+        for cuisine in centroids.keys():
+            centroids[cuisine] = np.divide(centroids[cuisine], labels[cuisine])
+
+        return centroids
+
+    def testKNN(self, testset_len, test_set, train_vectors, test_vectors):
+        # number of correct predictions
+        correct_predictions = 0
+        # iterating for every test file
+        for i in range(0, testset_len):
+
+            doc_id = test_set[i]["id"]
+            label = test_set[i]["cuisine"]
+            key = str(doc_id) + "-" + label
+
+            # returns a result dict, where doc with highest cosine is the first item
+            # result_set = {"096-filipino": 0.51468, ...} for KNN
+            result_set = self.cosineSimilarity(train_vectors, test_vectors, key)  # for KNN
+            # result_set = ml.cosineSimilarity(centroids, test_vectors, key)
+
+            # k = 3; to select top k neighbors/docs from result_set
+            k = 3
+
+            # e.g: test_composite_key = 11300-filipino
+            correct_predictions += self.classifyKNN(result_set, k, key)
+
+        # accuracy = no of files correctly predicted / total files tested
+        accuracy = format((correct_predictions / testset_len) * 100, ".5f")
+
+        print(datetime.now().strftime("%H:%M:%S") + ": KNN accuracy = " + accuracy)
+
+    def testRochhio(self, testset_len, test_set, centroids, test_vectors):
+        # number of correct predictions
+        correct_predictions = 0
+        # iterating for every test file
+        for i in range(0, testset_len):
+
+            doc_id = test_set[i]["id"]
+            label = test_set[i]["cuisine"]
+            key = str(doc_id) + "-" + label
+
+            # returns a result dict, where doc with highest cosine is the first item
+            # result_set = {"filipino": 0.51468, ...} for Rochhio
+            result_set = self.cosineSimilarity(centroids, test_vectors, key)
+
+            # e.g: test_composite_key = 11300-filipino
+            correct_predictions += self.classifyRochhio(result_set, key)
+
+        # accuracy = no of files correctly predicted / total files tested
+        accuracy = format((correct_predictions / testset_len) * 100, ".5f")
+
+        print(datetime.now().strftime("%H:%M:%S") + ": Rochhio accuracy = " + accuracy)

@@ -1,7 +1,16 @@
 <component name="ProjectDictionaryState">
   <dictionary name="alifa">
     <words>
+      <w>centr</w>
+      <w>jsonlist</w>
+      <w>lemmatizer</w>
+      <w>preprocessing</w>
+      <w>rochhio</w>
+      <w>stoplist</w>
       <w>stopword</w>
+      <w>strftime</w>
+      <w>testset</w>
+      <w>trainset</w>
     </words>
   </dictionary>
 </component>
